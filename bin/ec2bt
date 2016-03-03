@@ -6,8 +6,8 @@
 set -e -u -o pipefail
 
 # install gdb
-apt-get update -qq --allow-unauthenticated || true
-apt-get install -qq -y --force-yes --allow-unauthenticated gdb
+sudo apt-get update -qq --allow-unauthenticated || true
+sudo apt-get install -qq -y --force-yes --allow-unauthenticated gdb
 
 # create coredump directory and set as destination for coredumps
 mkdir -p /tmp/ec2bt
@@ -44,5 +44,5 @@ end script
 ' > /etc/init/ec2bt.conf
 
 # start it up
-start ec2bt
+sudo start ec2bt
 
