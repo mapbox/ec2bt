@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+
+[ -z $EC2BT_PROGRAM_PATH ] && echo "Usage: EC2BT_PROGRAM_PATH=<programPath> ec2bt" && exit 1
+! [ -f $EC2BT_PROGRAM_PATH ] && echo "Program path $EC2BT_PROGRAM_PATH could not be found" && exit 1
+
+set -e -u -o pipefail
+
+# install gdb
+apt-get update -qq --allow-unauthenticated || true
+apt-get install -qq -y --force-yes --allow-unauthenticated gdb
+
+# create coredump directory and set as destination for coredumps
+mkdir -p /tmp/ec2bt
+echo /tmp/ec2bt/core.%h.%t > /proc/sys/kernel/core_pattern
+
+# set ec2btProgramPath in /etc/profile
+echo "export EC2BT_PROGRAM_PATH=$EC2BT_PROGRAM_PATH" > /etc/profile.d/ec2bt.sh
+
+echo 'description "backtrace core dumps to syslog"
+
+start on runlevel [2]
+stop on runlevel [016]
+
+script
+  . /etc/profile
+  while [ 1 ]
+  do
+    if [ "$(ls -A /tmp/ec2bt)" ]; then
+      for coreFile in /tmp/ec2bt/*; do
+        echo "Logging backtrace for $coreFile to syslog using $EC2BT_PROGRAM_PATH ..." >> /var/log/upstart/ec2bt.log
+        echo "Backtrace for $coreFile:" | logger
+        gdb $EC2BT_PROGRAM_PATH $coreFile \
+        -ex "set pagination 0" \
+        -ex "thread apply all bt" \
+        --batch | logger
+        rm $coreFile
+      done
+    else
+      echo "No core files found, waiting 20s ..." >> /var/log/upstart/ec2bt.log
+      sleep 20
+    fi
+  done
+end script
+' > /etc/init/ec2bt.conf
+
+# start it up
+start ec2bt
+
