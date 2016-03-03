@@ -47,3 +47,4 @@ sudo status ec2bt &> /dev/null
 msg="/etc/init/ec2bt.conf exists"
 ([ -f /etc/init/ec2bt.conf ] && echo "ok - $msg") || (echo "not ok - $msg" && code=1)
 
+exit $code
